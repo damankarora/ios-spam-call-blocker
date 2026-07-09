@@ -1,0 +1,52 @@
+name: CallBlocker
+options:
+  bundleIdPrefix: com.damankarora.callblocker
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: en
+
+settings:
+  base:
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  CallBlocker:
+    type: application
+    platform: iOS
+    sources:
+      - path: CallBlockerApp
+    info:
+      path: CallBlockerApp/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.damankarora.callblocker
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_PREVIEWS: true
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    dependencies:
+      - target: CallDirectoryExtension
+        embed: true
+
+  CallDirectoryExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: CallDirectoryExtension
+    info:
+      path: CallDirectoryExtension/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.callkit.call-directory
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).CallDirectoryHandler
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.damankarora.callblocker.CallDirectoryExtension
+        SKIP_INSTALL: true
