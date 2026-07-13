@@ -10,13 +10,26 @@ class CallDirectoryHandler: CXCallDirectoryProvider {
     }
 
     private func addBlockingEntries(to context: CXCallDirectoryExtensionContext) {
-        let prefix: Int64 = 911_409_000_000
-        let count: Int64 = 1_000_000
-        var number = prefix
-        let end = prefix + count - 1
-        while number <= end {
-            context.addBlockingEntry(withNextSequentialPhoneNumber: CXCallDirectoryPhoneNumber(number))
-            number += 1
+        let intervals = BlockListStore.load()
+            .compactMap { range -> ClosedRange<Int64>? in
+                guard let start = range.startNumber, let end = range.endNumber else { return nil }
+                return start...end
+            }
+            .sorted { $0.lowerBound < $1.lowerBound }
+
+        // CallKit requires strictly ascending, non-repeating numbers or it silently discards
+        // the whole batch, so overlapping ranges must be clipped rather than added as-is.
+        var lastAdded: Int64?
+        for interval in intervals {
+            var number = interval.lowerBound
+            if let last = lastAdded, number <= last {
+                number = last + 1
+            }
+            while number <= interval.upperBound {
+                context.addBlockingEntry(withNextSequentialPhoneNumber: CXCallDirectoryPhoneNumber(number))
+                lastAdded = number
+                number += 1
+            }
         }
     }
 }

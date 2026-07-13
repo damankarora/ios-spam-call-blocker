@@ -1,20 +1,29 @@
 # Call Blocker
 
-Native iOS app that blocks every phone number in the range **+91 1409-000000**
-through **+91 1409-999999** using Apple's `CXCallDirectoryProvider` (Call
-Directory Extension) API. No third-party services involved — the block list
-lives entirely on-device inside CallKit's own data store.
+Native iOS app that blocks whole ranges of phone numbers — by default every
+number from **+91 1409-000000** through **+91 1409-999999** — using Apple's
+`CXCallDirectoryProvider` (Call Directory Extension) API. No third-party
+services involved — the block list lives entirely on-device inside CallKit's
+own data store.
 
 ## How it works
 
-- `CallDirectoryExtension/CallDirectoryHandler.swift` registers 1,000,000
-  blocking entries (`911409000000` … `911409999999`, ascending `Int64`,
-  country code + digits, no `+`/dashes — required by the API) with CallKit.
-- `CallBlockerApp` is a thin container app with one screen: it shows whether
-  the extension is enabled, links to Settings, and has a **Reload Blocklist**
-  button that calls
+- Blocked ranges are defined as **country code + prefix + number of wildcard
+  digits** (e.g. `91`, `1409`, `6` → blocks `911409000000`…`911409999999`)
+  and edited from the app's **Blocked Ranges** screen — no rebuild required
+  to add/remove/change a range.
+- Ranges are stored as JSON in a shared **App Group** `UserDefaults`
+  (`Shared/BlockListStore.swift`), since the app and the extension run as
+  separate processes and can't talk to each other directly.
+- `CallDirectoryExtension/CallDirectoryHandler.swift` reads the saved ranges,
+  sorts and de-duplicates them, and registers each number with CallKit in
+  strictly ascending `Int64` order (country code + digits, no `+`/dashes —
+  required by the API, which silently discards the whole batch otherwise).
+- `CallBlockerApp` is a thin container app: one screen shows whether the
+  extension is enabled, links to the ranges editor, and has a **Reload
+  Blocklist** button that calls
   `CXCallDirectoryManager.sharedInstance.reloadExtension(withIdentifier:)`
-  so you can re-push the list after any change to the handler.
+  so you can re-push the list after any change.
 - Blocked numbers do **not** show up in Settings → Phone → Blocked Contacts.
   The only visible UI is the toggle at
   **Settings → Phone → Call Blocking & Identification → CallBlocker**.
@@ -52,7 +61,15 @@ In Xcode:
 2. Select the **CallDirectoryExtension** target → *Signing & Capabilities* →
    set the same Team. Its bundle ID must be the app's ID with a suffix, e.g.
    `com.damankarora.callblocker.CallDirectoryExtension` (already set).
-3. Plug in your iPhone, select it as the run destination, and press **Run**
+3. Both targets already declare the `group.com.damankarora.callblocker` App
+   Group in their entitlements (via `project.yml`). With automatic signing,
+   Xcode registers this App Group on your account the first time you build —
+   free personal teams support App Groups, no paid membership needed. If you
+   changed `bundleIdPrefix` in `project.yml`, also update the App Group
+   identifier in both `entitlements.properties` blocks and in
+   `Shared/BlockListStore.swift` (`appGroupID`) so they still match each
+   other.
+4. Plug in your iPhone, select it as the run destination, and press **Run**
    on the **CallBlocker** scheme. Trust the developer certificate on-device
    if prompted (Settings → General → VPN & Device Management).
 
@@ -60,12 +77,14 @@ In Xcode:
 
 1. On your iPhone: **Settings → Phone → Call Blocking & Identification**.
 2. Turn on the **CallBlocker** toggle.
-3. Open the CallBlocker app and tap **Reload Blocklist** to push the initial
-   1,000,000-entry list into CallKit. This can take a little while the first
-   time — the button shows a spinner until it completes.
-4. Whenever you change the blocked range in `CallDirectoryHandler.swift`,
-   rebuild and re-run, then tap **Reload Blocklist** again (or toggle the
-   extension off/on in Settings) to push the update.
+3. Open the CallBlocker app. The default range (+91 1409-XXXXXX) is preloaded;
+   add/edit/remove ranges from **Blocked Ranges**.
+4. Tap **Reload Blocklist** to push the list into CallKit. For a full
+   1,000,000-entry range this can take a little while the first time — the
+   button shows a spinner until it completes.
+5. Whenever you add, remove, or edit a range, tap **Reload Blocklist** again
+   (or toggle the extension off/on in Settings) to push the update — no
+   rebuild needed.
 
 ## Free Apple Developer team caveats
 
@@ -77,12 +96,14 @@ In Xcode:
 - Free-team provisioning can only install to devices registered to that
   Apple ID — no TestFlight/App Store distribution without the paid program.
 
-## Adjusting the blocked range
+## Adjusting the blocked ranges
 
-Edit the `prefix` and `count` constants in
-`CallDirectoryExtension/CallDirectoryHandler.swift`. Entries **must** be
-added in strictly ascending order or CallKit silently discards the entire
-batch — keep any edits monotonic.
+Use the **Blocked Ranges** screen in the app — no rebuild required. Each
+range is capped at 6 wildcard digits (1,000,000 numbers), matching Apple's
+documented scale for call directory extensions; add multiple ranges if you
+need to cover more than one prefix. `CallDirectoryHandler` merges and sorts
+all saved ranges into strictly ascending order itself, so overlapping ranges
+are handled safely.
 
 ## Project layout
 
@@ -91,7 +112,11 @@ project.yml                          XcodeGen spec (source of truth for the Xcod
 CallBlockerApp/                      Container app (SwiftUI)
   CallBlockerApp.swift
   ContentView.swift
+  BlockedRangesView.swift            Add/edit/remove blocked ranges
   Assets.xcassets/
 CallDirectoryExtension/              Call Directory Extension target
   CallDirectoryHandler.swift
+Shared/                              Shared between app and extension (App Group)
+  BlockRange.swift                   Country code + prefix + wildcard digits model
+  BlockListStore.swift               Reads/writes ranges via shared UserDefaults
 ```

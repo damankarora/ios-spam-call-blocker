@@ -13,6 +13,7 @@ enum ReloadState: Equatable {
 struct ContentView: View {
     @State private var reloadState: ReloadState = .idle
     @State private var enabledStatus: CXCallDirectoryManager.EnabledStatus = .unknown
+    @State private var ranges: [BlockRange] = BlockListStore.load()
 
     var body: some View {
         NavigationStack {
@@ -23,6 +24,19 @@ struct ContentView: View {
                         Spacer()
                         Text(statusLabel)
                             .foregroundStyle(statusColor)
+                    }
+                }
+
+                Section {
+                    NavigationLink {
+                        BlockedRangesView()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Blocked Ranges")
+                            Text(ranges.map(\.displayRange).joined(separator: ", "))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
 
@@ -69,15 +83,12 @@ struct ContentView: View {
                         }
                     }
                 }
-
-                Section("What this blocks") {
-                    Text("Every number from +91 1409-000000 through +91 1409-999999 (1,000,000 numbers).")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
             }
             .navigationTitle("Call Blocker")
-            .onAppear(perform: refreshStatus)
+            .onAppear {
+                refreshStatus()
+                ranges = BlockListStore.load()
+            }
         }
     }
 
