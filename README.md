@@ -6,6 +6,27 @@ number from **+91 1409-000000** through **+91 1409-999999** — using Apple's
 services involved — the block list lives entirely on-device inside CallKit's
 own data store.
 
+## Features
+
+- Block entire number ranges (country code + prefix + up to 6 wildcard
+  digits) instead of one number at a time.
+- Add, edit, and remove ranges from an in-app editor — no rebuild required.
+- 100% on-device: no network calls, no analytics, no third-party services.
+  The block list never leaves the phone.
+- One-tap **Reload Blocklist** to push changes into CallKit.
+
+## Contents
+
+- [How it works](#how-it-works)
+- [Prerequisites](#prerequisites)
+- [Build & run](#build--run)
+- [Enabling the block list](#enabling-the-block-list)
+- [Free Apple Developer team caveats](#free-apple-developer-team-caveats)
+- [Adjusting the blocked ranges](#adjusting-the-blocked-ranges)
+- [Project layout](#project-layout)
+- [Privacy](#privacy)
+- [License](#license)
+
 ## How it works
 
 - Blocked ranges are defined as **country code + prefix + number of wildcard
@@ -120,3 +141,15 @@ Shared/                              Shared between app and extension (App Group
   BlockRange.swift                   Country code + prefix + wildcard digits model
   BlockListStore.swift               Reads/writes ranges via shared UserDefaults
 ```
+
+## Privacy
+
+Call Blocker makes no network requests and includes no analytics or
+third-party SDKs. Blocked ranges are stored only in a local, on-device App
+Group `UserDefaults` container shared between the app and its extension —
+nothing is ever sent off the phone.
+
+## License
+
+No license file is currently included in this repository, so all rights
+are reserved by default. Add a `LICENSE` file if you want to permit reuse.
